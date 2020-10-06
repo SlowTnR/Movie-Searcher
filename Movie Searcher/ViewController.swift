@@ -7,6 +7,8 @@
 
 import UIKit
 
+// http://www.omdbapi.com/?apikey=29e94b43
+
 // UI
 // Network request
 // Tap a cell to see info
@@ -38,6 +40,50 @@ class ViewController: UIViewController, UITextFieldDelegate, UITableViewDelegate
     
     func searchMovies(){
         field.resignFirstResponder()
+        
+        guard let text = field.text, !text.isEmpty else {
+            return
+        }
+        
+        let query = text.replacingOccurrences(of: " ", with: "%20")
+        
+        // Get data from API
+        
+        movies.removeAll()
+        
+        URLSession.shared.dataTask(with: URL(string: "https://www.omdbapi.com/?apikey=29e94b43&s=\(query)&type=movie")!,
+                                   completionHandler: {data, response, error in
+                                    
+                                    guard let data = data, error == nil else { return}
+                                    
+                                    // Convert
+                                    var result: MovieResult?
+                                    do {
+                                        result = try JSONDecoder().decode(MovieResult.self, from: data)
+                                    }
+                                    catch {
+                                        print ("error with data convert")
+                                    }
+                                    
+                                    guard let finalResult = result else {
+                                        return
+                                    }
+                                    
+                                   
+                                    
+                                    // Update movies array
+                                    
+                                    let newMovies = finalResult.Search
+                                    self.movies.append(contentsOf: newMovies)
+                                    
+                                    
+                                    // Refresh table
+                                    
+                                    DispatchQueue.main.async {
+                                        self.table.reloadData()
+                                    }
+                                    
+                                   }).resume()
     }
     
     //MARK: TABLE
@@ -61,6 +107,18 @@ class ViewController: UIViewController, UITextFieldDelegate, UITableViewDelegate
 
 }
 
-struct Movie {
+struct MovieResult: Codable {
+    let Search: [Movie]
+}
+
+struct Movie: Codable {
+    let Title: String
+    let Year: String
+    let imdbID: String
+    let _Type: String
+    let Poster: String
     
+    private enum CodingKeys: String, CodingKey{
+        case Title, Year, imdbID, _Type = "Type", Poster
+    }
 }
